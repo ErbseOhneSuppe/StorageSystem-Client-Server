@@ -1,7 +1,7 @@
 import java.time.LocalDateTime;
 
 public class User {
-    private enum Role {
+    public enum Role {
         ADMIN,
         MANAGER,
         EMPLOYEE,

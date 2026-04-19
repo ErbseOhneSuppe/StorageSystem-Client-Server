@@ -106,14 +106,6 @@ public class Storage {
         this.capacity = capacity;
     }
 
-    public ArrayList<Item> getItems() {
-        return items;
-    }
-
-    public void setItems(ArrayList<Item> items) {
-        this.items = items;
-    }
-
     // Alles ausgeben als String
     @Override
     public String toString() {
@@ -126,7 +118,6 @@ public class Storage {
                 ", lastUpdate=" + lastUpdate +
                 ", status=" + status +
                 ", capacity=" + capacity +
-                ", items=" + items.size() +
                 '}';
     }
 }
