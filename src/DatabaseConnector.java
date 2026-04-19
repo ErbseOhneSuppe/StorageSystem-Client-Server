@@ -7,7 +7,7 @@ public class DatabaseConnector {
     // WICHTIG: BEI ÄNDERUNG DER DATENBANK LOCATION HIER ÄNDERN!!!!
     private static final String URL = "jdbc:mysql://127.0.0.1:3306/storagesystem_shema";
     private static final String USER = "root";
-    private static final String PASSWORD = "password123";
+    private static final String PASSWORD = ""; //password123
 
     public void connect(){
         Connection connection = null;
