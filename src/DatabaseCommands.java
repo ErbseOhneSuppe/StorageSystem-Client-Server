@@ -58,7 +58,7 @@ public class DatabaseCommands {
         }
     }
 
-    // ------------------------------ [ User erstellen & entfernen] ------------------------------
+    // ------------------------------ [ User erstellen, entfernen, login ] ------------------------------
     public void insertUser(User user) {
         String sql = "INSERT INTO users (first_name, last_name, role, created_at, last_login, password_hash) VALUES (?, ?, ?, ?, ?, ?)";
 
@@ -94,6 +94,26 @@ public class DatabaseCommands {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean login(String username, String password) {
+        String sql = "SELECT * FROM users WHERE first_name = ? AND password_hash = ?";
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ps.setString(2, password);
+
+            ResultSet rs = ps.executeQuery();
+
+            return rs.next(); // true wenn User gefunden
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
     // ------------------------------ [ Storage erstellen & entfernen] ------------------------------

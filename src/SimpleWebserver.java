@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 
+// http://localhost:2903/index.html
 public class SimpleWebserver {
 
     public void start(int port) {
@@ -18,18 +19,60 @@ public class SimpleWebserver {
 
                 OutputStream out = client.getOutputStream();
 
-                String request = in.readLine();
-                System.out.println("Request: " + request);
+                String requestLine = in.readLine();
+                System.out.println("Request: " + requestLine);
 
-                if (request == null) {
+                if (requestLine == null) {
                     client.close();
                     continue;
                 }
 
-                String[] parts = request.split(" ");
-                String fileName = parts[1].substring(1);
+                String[] parts = requestLine.split(" ");
+                String path = parts[1];
 
-                if (fileName.equals("")) {
+                // ---------------- LOGIN ----------------
+                if (path.equals("/login")) {
+
+                    DatabaseCommands db = new DatabaseCommands();
+
+                    String line;
+                    int contentLength = 0;
+
+                    // Header lesen
+                    while (!(line = in.readLine()).isEmpty()) {
+                        if (line.startsWith("Content-Length:")) {
+                            contentLength = Integer.parseInt(line.split(":")[1].trim());
+                        }
+                    }
+
+                    // Body lesen
+                    char[] bodyChars = new char[contentLength];
+                    in.read(bodyChars);
+                    String body = new String(bodyChars);
+
+                    System.out.println("Body: " + body);
+
+                    String username = body.split("\"username\":\"")[1].split("\"")[0];
+                    String password = body.split("\"password\":\"")[1].split("\"")[0];
+
+                    boolean success = db.login(username, password);
+
+                    System.out.println("Login Result: " + success);
+
+                    String response = success ? "OK" : "FAIL";
+
+                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
+                    out.write("Content-Type: text/plain\r\n\r\n".getBytes());
+                    out.write(response.getBytes());
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- FILES ----------------
+                String fileName = path.substring(1);
+
+                if (fileName.isEmpty()) {
                     fileName = "index.html";
                 }
 
@@ -65,5 +108,4 @@ public class SimpleWebserver {
             e.printStackTrace();
         }
     }
-
 }
