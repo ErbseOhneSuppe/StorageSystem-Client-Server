@@ -58,8 +58,9 @@ public class DatabaseCommands {
         }
     }
 
-    // ------------------------------ [ User erstellen, entfernen, login ] ------------------------------
-    public void insertUser(User user) {
+    // ------------------------------ [ User erstellen, entfernen, login, JSON ] ------------------------------
+    public int insertUser(User user) {
+
         String sql = "INSERT INTO users (first_name, last_name, role, created_at, last_login, password_hash) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnector.connectToDatabase();
@@ -72,27 +73,28 @@ public class DatabaseCommands {
             ps.setObject(5, user.getLastLogin());
             ps.setString(6, user.getPasswordHash());
 
-            ps.executeUpdate();
-            System.out.println("User gespeichert");
+            return ps.executeUpdate();
 
         } catch (Exception e) {
             e.printStackTrace();
+            return 0;
         }
     }
 
-    public void deleteUser(int userId) {
+    public int deleteUser(int id) {
+
         String sql = "DELETE FROM users WHERE user_id = ?";
 
         try (Connection conn = DatabaseConnector.connectToDatabase();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setInt(1, userId);
-            ps.executeUpdate();
+            ps.setInt(1, id);
 
-            System.out.println("User gelöscht");
+            return ps.executeUpdate();
 
         } catch (Exception e) {
             e.printStackTrace();
+            return 0;
         }
     }
 
@@ -116,8 +118,71 @@ public class DatabaseCommands {
         return false;
     }
 
-    // ------------------------------ [ Storage erstellen & entfernen] ------------------------------
-    public void insertStorage(Storage storage) {
+    public User getUserByUsername(String username) {
+
+        String sql = "SELECT * FROM users WHERE first_name = ?";
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return new User(
+                        rs.getInt("user_id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        User.Role.valueOf(rs.getString("role")),
+                        rs.getObject("created_at", java.time.LocalDateTime.class),
+                        rs.getObject("last_login", java.time.LocalDateTime.class),
+                        rs.getString("password_hash")
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public String getAllUsersJson() {
+
+        String sql = "SELECT * FROM users";
+
+        StringBuilder json = new StringBuilder("[");
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                json.append("{")
+                        .append("\"userId\":").append(rs.getInt("user_id")).append(",")
+                        .append("\"firstName\":\"").append(rs.getString("first_name")).append("\",")
+                        .append("\"lastName\":\"").append(rs.getString("last_name")).append("\",")
+                        .append("\"role\":\"").append(rs.getString("role")).append("\"")
+                        .append("},");
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (json.charAt(json.length() - 1) == ',') {
+            json.deleteCharAt(json.length() - 1);
+        }
+
+        json.append("]");
+        return json.toString();
+    }
+
+    // ------------------------------ [ Storage erstellen, entfernen, JSON ] ------------------------------
+    public int insertStorage(Storage storage) {
+
         String sql = "INSERT INTO storages (name, location, type, manager_id, last_update, status, capacity) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnector.connectToDatabase();
@@ -131,11 +196,11 @@ public class DatabaseCommands {
             ps.setString(6, storage.getStatus().name());
             ps.setInt(7, storage.getCapacity());
 
-            ps.executeUpdate();
-            System.out.println("Storage gespeichert");
+            return ps.executeUpdate();
 
         } catch (Exception e) {
             e.printStackTrace();
+            return 0;
         }
     }
 
@@ -155,7 +220,40 @@ public class DatabaseCommands {
         }
     }
 
-    // ------------------------------ [ Items erstellen & entfernen] ------------------------------
+    public String getAllStoragesJson() {
+
+        String sql = "SELECT * FROM storages";
+
+        StringBuilder json = new StringBuilder("[");
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                json.append("{")
+                        .append("\"storageId\":").append(rs.getInt("storage_id")).append(",")
+                        .append("\"name\":\"").append(rs.getString("name")).append("\",")
+                        .append("\"location\":\"").append(rs.getString("location")).append("\",")
+                        .append("\"capacity\":").append(rs.getInt("capacity"))
+                        .append("},");
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (json.charAt(json.length() - 1) == ',') {
+            json.deleteCharAt(json.length() - 1);
+        }
+
+        json.append("]");
+        return json.toString();
+    }
+
+    // ------------------------------ [ Items erstellen, entfernen, JSON ] ------------------------------
     public void insertItem(Item item) {
         String sql = "INSERT INTO items (name, quantity, storage_id, buy_price, sell_price, weight, last_update) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
@@ -170,10 +268,12 @@ public class DatabaseCommands {
             ps.setFloat(6, item.getWeight());
             ps.setObject(7, item.getLastUpdate());
 
-            ps.executeUpdate();
-            System.out.println("Item gespeichert");
+            int rows = ps.executeUpdate();
+
+            System.out.println("INSERT RESULT ROWS: " + rows);
 
         } catch (Exception e) {
+            System.out.println("DB INSERT ERROR:");
             e.printStackTrace();
         }
     }
@@ -192,5 +292,38 @@ public class DatabaseCommands {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    // Alle items in json packen das man diese dann auslesen kann für die Seite
+    public String getAllItemsJson() {
+
+        StringBuilder json = new StringBuilder();
+        json.append("[");
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM items")) {
+
+            while (rs.next()) {
+
+                json.append("{")
+                        .append("\"itemId\":").append(rs.getInt("item_id")).append(",")
+                        .append("\"itemName\":\"").append(rs.getString("name")).append("\",")
+                        .append("\"quantity\":").append(rs.getInt("quantity")).append(",")
+                        .append("\"storageId\":").append(rs.getInt("storage_id"))
+                        .append("},");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (json.charAt(json.length() - 1) == ',') {
+            json.deleteCharAt(json.length() - 1);
+        }
+
+        json.append("]");
+
+        return json.toString();
     }
 }

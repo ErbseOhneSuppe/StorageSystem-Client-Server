@@ -14,12 +14,18 @@ function login() {
             password: password
         })
     })
-        .then(res => res.json())
+        .then(res => res.text())
         .then(data => {
-            if (data.success) {
-                alert("Login OK");
+
+            console.log("SERVER RESPONSE:", data);
+
+            if (data === "OK") {
+                localStorage.setItem("role", data.role);
+
+                window.location.href = "dashboard.html";
             } else {
-                alert("Login FAIL");
+                alert("Login fehlgeschlagen");
             }
+
         });
 }

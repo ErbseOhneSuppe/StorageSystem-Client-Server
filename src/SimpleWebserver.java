@@ -1,7 +1,7 @@
 import java.io.*;
 import java.net.*;
+import java.time.LocalDateTime;
 
-// http://localhost:2903/index.html
 public class SimpleWebserver {
 
     public void start(int port) {
@@ -30,46 +30,194 @@ public class SimpleWebserver {
                 String[] parts = requestLine.split(" ");
                 String path = parts[1];
 
+                // =====================================================
+                // ================ API ROUTES ==========================
+                // =====================================================
+
                 // ---------------- LOGIN ----------------
                 if (path.equals("/login")) {
 
+                    String body = readBody(in);
+
+                    String username = extract(body, "username");
+                    String password = extract(body, "password");
+
                     DatabaseCommands db = new DatabaseCommands();
-
-                    String line;
-                    int contentLength = 0;
-
-                    // Header lesen
-                    while (!(line = in.readLine()).isEmpty()) {
-                        if (line.startsWith("Content-Length:")) {
-                            contentLength = Integer.parseInt(line.split(":")[1].trim());
-                        }
-                    }
-
-                    // Body lesen
-                    char[] bodyChars = new char[contentLength];
-                    in.read(bodyChars);
-                    String body = new String(bodyChars);
-
-                    System.out.println("Body: " + body);
-
-                    String username = body.split("\"username\":\"")[1].split("\"")[0];
-                    String password = body.split("\"password\":\"")[1].split("\"")[0];
-
                     boolean success = db.login(username, password);
 
                     System.out.println("Login Result: " + success);
 
-                    String response = success ? "OK" : "FAIL";
-
-                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
-                    out.write("Content-Type: text/plain\r\n\r\n".getBytes());
-                    out.write(response.getBytes());
+                    sendResponse(out, success ? "OK" : "FAIL");
 
                     client.close();
                     continue;
                 }
 
-                // ---------------- FILES ----------------
+                // ---------------- GET ITEMS ----------------
+                if (path.equals("/items")) {
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    String json = db.getAllItemsJson();
+
+                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
+                    out.write("Content-Type: application/json\r\n\r\n".getBytes());
+                    out.write(json.getBytes());
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- CREATE ITEM ----------------
+                if (path.equals("/item/create")) {
+
+                    try {
+
+                        String body = readBody(in);
+
+                        System.out.println("RAW BODY: " + body);
+
+                        String itemName = extract(body, "itemName");
+                        String quantityStr = extract(body, "quantity");
+                        String storageIdStr = extract(body, "storageId");
+                        String buyPriceStr = extract(body, "buyPrice");
+                        String sellPriceStr = extract(body, "sellPrice");
+                        String weightStr = extract(body, "weight");
+
+                        // ---------------- VALIDATION ----------------
+                        if (itemName.isEmpty() || quantityStr.isEmpty() || storageIdStr.isEmpty()) {
+                            sendResponse(out, "ERROR: missing fields");
+                            client.close();
+                            continue;
+                        }
+
+                        // ---------------- SAFE PARSE ----------------
+                        int quantity = safeInt(quantityStr);
+                        int storageId = safeInt(storageIdStr);
+                        float buyPrice = safeFloat(buyPriceStr);
+                        float sellPrice = safeFloat(sellPriceStr);
+                        float weight = safeFloat(weightStr);
+
+                        Item item = new Item(
+                                0,
+                                itemName,
+                                quantity,
+                                storageId,
+                                buyPrice,
+                                sellPrice,
+                                weight,
+                                LocalDateTime.now()
+                        );
+
+                        DatabaseCommands db = new DatabaseCommands();
+                        db.insertItem(item);
+
+                        sendResponse(out, "OK");
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        sendResponse(out, "ERROR");
+                    }
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- GET STORAGE ----------------
+                if (path.equals("/storages")) {
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    String json = db.getAllStoragesJson();
+
+                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
+                    out.write("Content-Type: application/json\r\n\r\n".getBytes());
+                    out.write(json.getBytes());
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- CREATE STORAGE ----------------
+                if (path.equals("/storage/create")) {
+
+                    String body = readBody(in);
+
+                    Storage storage = new Storage(
+                            0,
+                            extract(body, "name"),
+                            extract(body, "location"),
+                            Storage.StorageType.NORMAL,
+                            new User(1, "admin", "admin", User.Role.ADMIN, null, null, ""),
+                            LocalDateTime.now(),
+                            Storage.StorageStatus.AKTIV,
+                            safeInt(extract(body, "capacity"))
+                    );
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.insertStorage(storage);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- GET USER ----------------
+                if (path.equals("/users")) {
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    String json = db.getAllUsersJson();
+
+                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
+                    out.write("Content-Type: application/json\r\n\r\n".getBytes());
+                    out.write(json.getBytes());
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- CREATE USER ----------------
+                if (path.equals("/user/create")) {
+
+                    String body = readBody(in);
+
+                    User user = new User(
+                            0,
+                            extract(body, "firstName"),
+                            extract(body, "lastName"),
+                            User.Role.EMPLOYEE,
+                            LocalDateTime.now(),
+                            null,
+                            extract(body, "password")
+                    );
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.insertUser(user);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- DELETE USER ----------------
+                if (path.startsWith("/user/delete")) {
+
+                    String query = path.split("\\?")[1];
+                    int id = Integer.parseInt(query.split("=")[1]);
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.deleteUser(id);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
+
+                    client.close();
+                    continue;
+                }
+
+                // =====================================================
+                // ================ FILE SERVER =========================
+                // =====================================================
+
                 String fileName = path.substring(1);
 
                 if (fileName.isEmpty()) {
@@ -80,17 +228,27 @@ public class SimpleWebserver {
 
                 if (file.exists()) {
 
-                    BufferedReader fileReader = new BufferedReader(new FileReader(file));
+                    FileInputStream fis = new FileInputStream(file);
 
-                    out.write("HTTP/1.1 200 OK\r\n".getBytes());
-                    out.write("Content-Type: text/html\r\n\r\n".getBytes());
+                    String contentType = "text/html";
 
-                    String line;
-                    while ((line = fileReader.readLine()) != null) {
-                        out.write(line.getBytes());
+                    if (fileName.endsWith(".css")) {
+                        contentType = "text/css";
+                    } else if (fileName.endsWith(".js")) {
+                        contentType = "application/javascript";
                     }
 
-                    fileReader.close();
+                    out.write(("HTTP/1.1 200 OK\r\n").getBytes());
+                    out.write(("Content-Type: " + contentType + "\r\n\r\n").getBytes());
+
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
+
+                    while ((bytesRead = fis.read(buffer)) != -1) {
+                        out.write(buffer, 0, bytesRead);
+                    }
+
+                    fis.close();
 
                 } else {
 
@@ -106,6 +264,76 @@ public class SimpleWebserver {
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    // =====================================================
+    // ================== HELPERS ==========================
+    // =====================================================
+
+    private String readBody(BufferedReader in) throws Exception {
+
+        String line;
+        int contentLength = 0;
+
+        while (!(line = in.readLine()).isEmpty()) {
+            if (line.startsWith("Content-Length:")) {
+                contentLength = Integer.parseInt(line.split(":")[1].trim());
+            }
+        }
+
+        char[] bodyChars = new char[contentLength];
+        in.read(bodyChars);
+
+        return new String(bodyChars);
+    }
+
+    private String extract(String body, String key) {
+
+        String stringPattern = "\"" + key + "\":\"";
+        String numberPattern = "\"" + key + "\":";
+
+        int start;
+
+        // String value
+        if (body.contains(stringPattern)) {
+            start = body.indexOf(stringPattern) + stringPattern.length();
+            int end = body.indexOf("\"", start);
+            return body.substring(start, end);
+        }
+
+        // Number value
+        if (body.contains(numberPattern)) {
+            start = body.indexOf(numberPattern) + numberPattern.length();
+            int end = body.indexOf(",", start);
+
+            if (end == -1) end = body.indexOf("}", start);
+
+            return body.substring(start, end).trim();
+        }
+
+        return "";
+    }
+
+    private void sendResponse(OutputStream out, String msg) throws Exception {
+        out.write("HTTP/1.1 200 OK\r\n".getBytes());
+        out.write("Content-Type: text/plain\r\n\r\n".getBytes());
+        out.write(msg.getBytes());
+    }
+
+    private int safeInt(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private float safeFloat(String value) {
+        try {
+            return Float.parseFloat(value);
+        } catch (Exception e) {
+            return 0f;
         }
     }
 }
