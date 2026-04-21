@@ -122,6 +122,45 @@ public class SimpleWebserver {
                     continue;
                 }
 
+                //---------------- EDIT ITEM ----------------
+                if (path.equals("/item/update")) {
+
+                    String body = readBody(in);
+
+                    Item item = new Item(
+                            Integer.parseInt(extract(body, "itemId")),
+                            extract(body, "itemName"),
+                            safeInt(extract(body, "quantity")),
+                            safeInt(extract(body, "storageId")),
+                            safeFloat(extract(body, "buyPrice")),
+                            safeFloat(extract(body, "sellPrice")),
+                            safeFloat(extract(body, "weight")),
+                            LocalDateTime.now()
+                    );
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.updateItem(item);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- DELETE ITEM ----------------
+                if (path.startsWith("/item/delete")) {
+
+                    String query = path.split("\\?")[1];
+                    int id = Integer.parseInt(query.split("=")[1]);
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.deleteItem(id);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
+
+                    client.close();
+                    continue;
+                }
+
                 // ---------------- GET STORAGE ----------------
                 if (path.equals("/storages")) {
 
@@ -143,7 +182,7 @@ public class SimpleWebserver {
 
                     Storage storage = new Storage(
                             0,
-                            extract(body, "name"),
+                            extract(body, "storageName"),
                             extract(body, "location"),
                             Storage.StorageType.NORMAL,
                             new User(1, "admin", "admin", User.Role.ADMIN, null, null, ""),
@@ -154,6 +193,37 @@ public class SimpleWebserver {
 
                     DatabaseCommands db = new DatabaseCommands();
                     int rows = db.insertStorage(storage);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
+
+                    client.close();
+                    continue;
+                }
+
+                //---------------- EDIT STORAGE ----------------
+
+                // ---------------- CHECK IF STORAGE HAS ITEM ----------------
+                if (path.startsWith("/storage/hasItems")) {
+
+                    int id = Integer.parseInt(path.split("=")[1]);
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    boolean hasItems = db.storageHasItems(id);
+
+                    sendResponse(out, hasItems ? "YES" : "NO");
+
+                    client.close();
+                    continue;
+                }
+
+                // ---------------- DELETE STORAGE ----------------
+                if (path.startsWith("/storage/delete")) {
+
+                    String query = path.split("\\?")[1];
+                    int id = Integer.parseInt(query.split("=")[1]);
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.deleteStorage(id);
 
                     sendResponse(out, rows > 0 ? "OK" : "FAIL");
 
@@ -195,6 +265,29 @@ public class SimpleWebserver {
 
                     sendResponse(out, rows > 0 ? "OK" : "FAIL");
 
+                    client.close();
+                    continue;
+                }
+
+                //---------------- EDIT USER ----------------
+                if (path.equals("/user/update")) {
+
+                    String body = readBody(in);
+
+                    User user = new User(
+                            Integer.parseInt(extract(body, "userId")),
+                            extract(body, "firstName"),
+                            extract(body, "lastName"),
+                            User.Role.valueOf(extract(body, "role")),
+                            null,
+                            null,
+                            extract(body, "password")
+                    );
+
+                    DatabaseCommands db = new DatabaseCommands();
+                    int rows = db.updateUser(user);
+
+                    sendResponse(out, rows > 0 ? "OK" : "FAIL");
                     client.close();
                     continue;
                 }

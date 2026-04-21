@@ -1,26 +1,92 @@
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #1e1e1e;
+    color: #fff;
+}
+
 .sidebar {
     width: 200px;
     height: 100vh;
-    background: #222;
+    background: #111;
     color: white;
     position: fixed;
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
+    border-right: 1px solid #2a2a2a;
 }
 
 .sidebar button {
     display: block;
     width: 100%;
-    padding: 15px;
+    padding: 14px;
     background: none;
     border: none;
     color: white;
+    text-align: left;
     cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
 }
 
 .sidebar button:hover {
-    background: #444;
+    background: #2a2a2a;
+}
+
+.sidebar button:active {
+    background: #3a3a3a;
 }
 
 #content {
-    margin-left: 210px;
+    margin-left: 200px;
     padding: 20px;
+    min-height: 100vh;
+    background: #1e1e1e;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #2a2a2a;
+}
+
+th {
+    background: #111;
+    padding: 10px;
+    text-align: left;
+}
+
+td {
+    padding: 8px;
+    border-bottom: 1px solid #333;
+}
+
+tr:hover {
+    background: #333;
+}
+
+.create-button, .delete-button, .edit-button, select, input {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.create-button {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+}
+
+.edit-button {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+}
+
+.delete-button {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #fff;
 }

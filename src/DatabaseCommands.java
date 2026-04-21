@@ -81,6 +81,31 @@ public class DatabaseCommands {
         }
     }
 
+    public int updateUser(User user) {
+
+        String sql = """
+        UPDATE users 
+        SET first_name = ?, last_name = ?, role = ?, password_hash = ?
+        WHERE user_id = ?
+    """;
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, user.getUserFirstName());
+            ps.setString(2, user.getUserLastName());
+            ps.setString(3, user.getRole().name());
+            ps.setString(4, user.getPasswordHash());
+            ps.setInt(5, user.getUserId());
+
+            return ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
     public int deleteUser(int id) {
 
         String sql = "DELETE FROM users WHERE user_id = ?";
@@ -204,20 +229,43 @@ public class DatabaseCommands {
         }
     }
 
-    public void deleteStorage(int storageId) {
+    public int deleteStorage(int storageId) {
+
         String sql = "DELETE FROM storages WHERE storage_id = ?";
 
         try (Connection conn = DatabaseConnector.connectToDatabase();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, storageId);
-            ps.executeUpdate();
 
-            System.out.println("Storage gelöscht");
+            return ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public boolean storageHasItems(int storageId) {
+
+        String sql = "SELECT COUNT(*) FROM items WHERE storage_id = ?";
+
+        try (Connection conn = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, storageId);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        return false;
     }
 
     public String getAllStoragesJson() {
@@ -278,19 +326,52 @@ public class DatabaseCommands {
         }
     }
 
-    public void deleteItem(int itemId) {
+    // Item updaten
+    public int updateItem(Item item) {
+
+        String sql = "UPDATE item SET " +
+                "item_name = ?, " +
+                "quantity = ?, " +
+                "storage_id = ?, " +
+                "buy_price = ?, " +
+                "sell_price = ?, " +
+                "weight = ? " +
+                "WHERE item_id = ?";
+
+        try (Connection con = DatabaseConnector.connectToDatabase();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, item.getItemName());
+            ps.setInt(2, item.getQuantity());
+            ps.setInt(3, item.getStorageId());
+            ps.setFloat(4, item.getBuyPrice());
+            ps.setFloat(5, item.getSellPrice());
+            ps.setFloat(6, item.getWeight());
+            ps.setInt(7, item.getItemId());
+
+            return ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    // Item entfernen
+    public int deleteItem(int itemId) {
+
         String sql = "DELETE FROM items WHERE item_id = ?";
 
         try (Connection conn = DatabaseConnector.connectToDatabase();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, itemId);
-            ps.executeUpdate();
 
-            System.out.println("Item gelöscht");
+            return ps.executeUpdate();
 
         } catch (Exception e) {
             e.printStackTrace();
+            return 0;
         }
     }
 

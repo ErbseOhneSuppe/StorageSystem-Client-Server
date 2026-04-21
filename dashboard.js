@@ -7,7 +7,7 @@ window.onload = function() {
 
     console.log("ROLE:", role);
 
-    // 🔥 User Button verstecken wenn nicht ADMIN
+    // User Button verstecken wenn nicht ADMIN
     if (role !== "ADMIN") {
         //document.getElementById("userBtn").style.display = "none";
     }
@@ -41,7 +41,7 @@ function loadPage(page) {
                 <input id="managerId" type="number" placeholder="Manager ID">
                 <input id="capacity" type="number" placeholder="Capacity">
     
-                <button onclick="createStorage()">Create Storage</button>
+                <button class="create-button" onclick="createStorage()">Create Storage</button>
             </div>
     
             <hr>
@@ -68,7 +68,7 @@ function loadPage(page) {
             <input id="sellPrice" type="number" placeholder="Sell Price">
             <input id="weight" type="number" placeholder="Weight">
 
-            <button onclick="createItem()">Create Item</button>
+            <button class="create-button" onclick="createItem()">Create Item</button>
         </div>
 
         <hr>
@@ -97,7 +97,7 @@ function loadPage(page) {
 
             <input id="password" placeholder="Password">
 
-            <button onclick="createUser()">Create User</button>
+            <button class="create-button" onclick="createUser()">Create User</button>
         </div>
 
         <hr>
@@ -127,13 +127,8 @@ function createUser() {
     })
         .then(res => res.text())
         .then(data => {
-
             console.log("User erstellt:", data);
-
-            document.getElementById("firstName").value = "";
-            document.getElementById("lastName").value = "";
-            document.getElementById("password").value = "";
-
+            window.editingUserId = null;
             loadUsers();
         });
 }
@@ -148,10 +143,10 @@ function loadUsers() {
             let html = `<table border="1" width="100%">
                 <tr>
                     <th>ID</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Role</th>
-                    <th>Action</th>
+                    <th>Vorname</th>
+                    <th>Nachname</th>
+                    <th>Rolle</th>
+                    <th>Aktion</th>
                 </tr>`;
 
             data.forEach(u => {
@@ -162,7 +157,8 @@ function loadUsers() {
                         <td>${u.lastName}</td>
                         <td>${u.role}</td>
                         <td>
-                            <button onclick="deleteUser(${u.userId})">Delete</button>
+                            <button class="edit-button" onclick='editUser(${u.userId}, ${JSON.stringify(u.firstName)}, ${JSON.stringify(u.lastName)}, ${JSON.stringify(u.role)})'>Edit</button>
+                            <button class="delete-button" onclick="deleteUser(${u.userId})">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -174,6 +170,17 @@ function loadUsers() {
         });
 }
 
+// Nutzer bearbeiten
+function editUser(id, firstName, lastName, role) {
+
+    document.getElementById("firstName").value = firstName;
+    document.getElementById("lastName").value = lastName;
+    document.getElementById("role").value = role;
+
+    // hidden id merken
+    window.editingUserId = id;
+}
+
 // Nutzer löschen
 function deleteUser(id) {
     fetch("/user/delete?id=" + id, {
@@ -181,7 +188,8 @@ function deleteUser(id) {
     })
         .then(res => res.text())
         .then(data => {
-            console.log(data);
+            console.log("User gelöscht: ", data);
+
             loadUsers(); // refresh
         });
 }
@@ -204,8 +212,8 @@ function createStorage() {
     })
         .then(res => res.text())
         .then(data => {
-            console.log("Storage:", data);
-
+            console.log("Storage erstellt:", data);
+            window.editingStorageId = null;
             loadStorages();
         });
 }
@@ -221,9 +229,9 @@ function loadStorages() {
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
-                    <th>Location</th>
-                    <th>Capacity</th>
-                    <th>Action</th>
+                    <th>Standort</th>
+                    <th>Kapazität</th>
+                    <th>Aktion</th>
                 </tr>`;
 
             data.forEach(s => {
@@ -234,7 +242,8 @@ function loadStorages() {
                         <td>${s.location}</td>
                         <td>${s.capacity}</td>
                         <td>
-                            <button onclick="deleteStorage(${s.storageId})">Delete</button>
+                            <button class="edit-button" onclick="editStorage(${s.storageId}, ${JSON.stringify(s.name)}, ${JSON.stringify(s.location)}, ${s.capacity})">Edit</button>
+                            <button class="delete-button" onclick="deleteStorage(${s.storageId})">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -246,13 +255,38 @@ function loadStorages() {
         });
 }
 
+// Storage bearbeiten
+function editStorage(id, name, location, capacity) {
+
+    document.getElementById("storageName").value = name;
+    document.getElementById("location").value = location;
+    document.getElementById("capacity").value = capacity;
+
+    window.editingStorageId = id;
+}
+
 // Storage löschen
 function deleteStorage(id) {
-    fetch("/storage/delete?id=" + id, {
-        method: "DELETE"
-    })
+
+    fetch("/storage/hasItems?id=" + id)
         .then(res => res.text())
-        .then(() => loadStorages());
+        .then(result => {
+
+            if (result === "YES") {
+                alert("Das Lager enthält noch Gegenstände! Bitte erst diese entfernen!");
+                return;
+            }
+
+            // ✅ Wenn leer → löschen
+            fetch("/storage/delete?id=" + id, {
+                method: "DELETE"
+            })
+                .then(res => res.text())
+                .then(data => {
+                    console.log("Storage gelöscht: ", data);
+                    loadStorages();
+                });
+        });
 }
 
 // Item erstellen
@@ -274,8 +308,8 @@ function createItem() {
     })
         .then(res => res.text())
         .then(data => {
-            console.log("Response:", data);
-
+            console.log("Item erstellt: ", data);
+            window.editingItemId = null;
             loadItems();
         });
 }
@@ -291,9 +325,9 @@ function loadItems() {
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
-                    <th>Qty</th>
-                    <th>Storage</th>
-                    <th>Action</th>
+                    <th>Anzahl</th>
+                    <th>Lager</th>
+                    <th>Aktion</th>
                 </tr>`;
 
             data.forEach(i => {
@@ -304,7 +338,8 @@ function loadItems() {
                         <td>${i.quantity}</td>
                         <td>${i.storageId}</td>
                         <td>
-                            <button onclick="deleteItem(${i.itemId})">Delete</button>
+                            <button class="edit-button" onclick="editItem(${i.itemId})">Edit</button>
+                            <button class="delete-button" onclick="deleteItem(${i.itemId})">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -316,11 +351,25 @@ function loadItems() {
         });
 }
 
+// Item bearbeiten
+function editItem(id, name, quantity, storageId) {
+
+    document.getElementById("itemName").value = name;
+    document.getElementById("quantity").value = quantity;
+    document.getElementById("storageId").value = storageId;
+
+    window.editingItemId = id;
+}
+
 // Item löschen
 function deleteItem(id) {
+
     fetch("/item/delete?id=" + id, {
         method: "DELETE"
     })
         .then(res => res.text())
-        .then(() => loadItems());
+        .then(data => {
+            console.log("Item gelöscht: ", data);
+            loadItems(); // refresh
+        });
 }
