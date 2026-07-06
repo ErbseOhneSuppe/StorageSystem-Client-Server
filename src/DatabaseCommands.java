@@ -188,7 +188,8 @@ public class DatabaseCommands {
                         .append("\"userId\":").append(rs.getInt("user_id")).append(",")
                         .append("\"firstName\":\"").append(rs.getString("first_name")).append("\",")
                         .append("\"lastName\":\"").append(rs.getString("last_name")).append("\",")
-                        .append("\"role\":\"").append(rs.getString("role")).append("\"")
+                        .append("\"role\":\"").append(rs.getString("role")).append("\",")
+                        .append("\"password\":\"").append(rs.getString("password_hash")).append("\"")
                         .append("},");
 
             }
@@ -284,6 +285,8 @@ public class DatabaseCommands {
                         .append("\"storageId\":").append(rs.getInt("storage_id")).append(",")
                         .append("\"name\":\"").append(rs.getString("name")).append("\",")
                         .append("\"location\":\"").append(rs.getString("location")).append("\",")
+                        .append("\"type\":\"").append(rs.getString("type")).append("\",")
+                        .append("\"status\":\"").append(rs.getString("status")).append("\",")
                         .append("\"capacity\":").append(rs.getInt("capacity"))
                         .append("},");
 
@@ -326,37 +329,6 @@ public class DatabaseCommands {
         }
     }
 
-    // Item updaten
-    public int updateItem(Item item) {
-
-        String sql = "UPDATE item SET " +
-                "item_name = ?, " +
-                "quantity = ?, " +
-                "storage_id = ?, " +
-                "buy_price = ?, " +
-                "sell_price = ?, " +
-                "weight = ? " +
-                "WHERE item_id = ?";
-
-        try (Connection con = DatabaseConnector.connectToDatabase();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            ps.setString(1, item.getItemName());
-            ps.setInt(2, item.getQuantity());
-            ps.setInt(3, item.getStorageId());
-            ps.setFloat(4, item.getBuyPrice());
-            ps.setFloat(5, item.getSellPrice());
-            ps.setFloat(6, item.getWeight());
-            ps.setInt(7, item.getItemId());
-
-            return ps.executeUpdate();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return 0;
-        }
-    }
-
     // Item entfernen
     public int deleteItem(int itemId) {
 
@@ -391,7 +363,10 @@ public class DatabaseCommands {
                         .append("\"itemId\":").append(rs.getInt("item_id")).append(",")
                         .append("\"itemName\":\"").append(rs.getString("name")).append("\",")
                         .append("\"quantity\":").append(rs.getInt("quantity")).append(",")
-                        .append("\"storageId\":").append(rs.getInt("storage_id"))
+                        .append("\"storageId\":").append(rs.getInt("storage_id")).append(",")
+                        .append("\"buyPrice\":").append(rs.getFloat("buy_price")).append(",")
+                        .append("\"sellPrice\":").append(rs.getFloat("sell_price")).append(",")
+                        .append("\"weight\":").append(rs.getFloat("weight"))
                         .append("},");
             }
 
